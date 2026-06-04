@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: stg_transactions
+    description: >
+      Cleaned and typed transaction records unioned from all store CSV seed files
+      (store_S001, store_S002, store_5_25-01, etc.). One row per transaction line item.
+      Each seed file represents one physical store's transactions. Product and customer
+      attributes are denormalised directly into each row from the source.
+    columns:
+      - name: transaction_id
+        description: "Unique identifier for each transaction. Format: S001-YYYYMMDD-NNNN."
+        tests:
+          - unique
+          - not_null
+      - name: store_id
+        description: "Store that processed the transaction (e.g. S001, S002)."
+        tests:
+          - not_null
+      - name: product_id
+        description: "Product identifier (e.g. P001, P005)."
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Customer identifier (e.g. C2679)."
+        tests:
+          - not_null
+      - name: transaction_timestamp
+        description: "Full datetime of the transaction."
+        tests:
+          - not_null
+      - name: transaction_date
+        description: "Date portion of the transaction timestamp."
+        tests:
+          - not_null
+      - name: transaction_year
+        description: "Year extracted from transaction_timestamp."
+      - name: transaction_month
+        description: "Month number extracted from transaction_timestamp."
+      - name: transaction_hour
+        description: "Hour extracted from transaction_timestamp — useful for peak hour analysis."
+      - name: product_name
+        description: "Name of the product sold (e.g. Eggs 12 pack, Rice 5kg)."
+        tests:
+          - not_null
+      - name: category
+        description: "Product category (e.g. Dairy, Groceries, Meat, Household, Beverages)."
+        tests:
+          - not_null
+      - name: quantity
+        description: "Number of units purchased in this transaction."
+        tests:
+          - not_null
+      - name: unit_price
+        description: "Price per single unit at time of transaction."
+        tests:
+          - not_null
+      - name: total_amount
+        description: "Total transaction value — quantity multiplied by unit_price."
+        tests:
+          - not_null
+      - name: payment_method
+        description: "Payment method used: Cash, Card, or Transfer."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Cash', 'Card', 'Transfer', 'Mobile', 'Voucher']
