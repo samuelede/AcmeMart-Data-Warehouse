@@ -1,0 +1,201 @@
+version: 2
+
+models:
+
+  - name: fct_sales
+    description: >
+      Central fact table. One row per transaction line item built directly
+      from stg_transactions. Contains foreign keys to all three dimension
+      tables and all measurable transaction attributes.
+    columns:
+      - name: sales_key
+        description: "Surrogate primary key generated from transaction_id using dbt_utils."
+        tests:
+          - unique
+          - not_null
+      - name: transaction_id
+        description: "Natural business key for the transaction."
+        tests:
+          - unique
+          - not_null
+      - name: store_id
+        description: "Foreign key to dim_stores."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_stores')
+              field: store_id
+      - name: product_id
+        description: "Foreign key to dim_products."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_products')
+              field: product_id
+      - name: customer_id
+        description: "Foreign key to dim_customers."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_id
+      - name: transaction_timestamp
+        description: "Full datetime the transaction occurred."
+        tests:
+          - not_null
+      - name: transaction_date
+        description: "Date of the transaction."
+        tests:
+          - not_null
+      - name: transaction_year
+        description: "Year of transaction — used for time-series reporting."
+      - name: transaction_month
+        description: "Month of transaction — used for monthly aggregation."
+      - name: transaction_hour
+        description: "Hour of transaction — used for peak hour analysis."
+      - name: quantity
+        description: "Units purchased."
+        tests:
+          - not_null
+      - name: unit_price
+        description: "Price per unit at time of sale."
+        tests:
+          - not_null
+      - name: total_amount
+        description: "Total transaction value from source data."
+        tests:
+          - not_null
+      - name: calculated_amount
+        description: "Independently computed quantity × unit_price for validation cross-check."
+      - name: payment_method
+        description: "Cash, Card, or Transfer."
+        tests:
+          - not_null
+      - name: category
+        description: "Product category carried through from staging."
+        tests:
+          - not_null
+      - name: product_name
+        description: "Product name carried through from staging."
+        tests:
+          - not_null
+
+  - name: dim_customers
+    description: >
+      Customer dimension derived entirely from transaction behaviour.
+      One row per customer_id. All attributes are computed from purchase history.
+      Includes full RFM (Recency, Frequency, Monetary) banding for segmentation.
+    columns:
+      - name: customer_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+      - name: first_purchase_date
+        description: "Date of the customer's earliest recorded transaction."
+        tests:
+          - not_null
+      - name: last_purchase_date
+        description: "Date of the customer's most recent transaction."
+        tests:
+          - not_null
+      - name: days_since_last_purchase
+        description: "Days elapsed since last purchase. Recency metric."
+        tests:
+          - not_null
+      - name: total_transactions
+        description: "All-time transaction count for this customer."
+        tests:
+          - not_null
+      - name: stores_visited
+        description: "Count of distinct stores this customer has transacted in."
+      - name: unique_products_bought
+        description: "Count of distinct products this customer has ever purchased."
+      - name: lifetime_value
+        description: "Sum of all total_amount values across the customer's history."
+        tests:
+          - not_null
+      - name: avg_order_value
+        description: "Average transaction value across all orders."
+      - name: preferred_payment_method
+        description: "The payment method this customer uses most frequently."
+      - name: recency_band
+        description: "Active ≤30d | At Risk 31–90d | Lapsing 91–180d | Churned >180d."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Active', 'At Risk', 'Lapsing', 'Churned']
+      - name: frequency_band
+        description: "High ≥20 | Medium 5–19 | Low <5 transactions."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['High', 'Medium', 'Low']
+      - name: monetary_band
+        description: "High Value ≥500 | Mid Value 100–499 | Low Value <100."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['High Value', 'Mid Value', 'Low Value']
+
+  - name: dim_products
+    description: >
+      Product dimension derived from transaction data.
+      One row per product_id. Pricing stats derived from observed transaction values.
+    columns:
+      - name: product_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: "Display name of the product."
+        tests:
+          - not_null
+      - name: category
+        description: "Product category (e.g. Dairy, Groceries, Meat, Household, Beverages)."
+        tests:
+          - not_null
+      - name: min_unit_price
+        description: "Lowest unit price observed for this product across all transactions."
+        tests:
+          - not_null
+      - name: max_unit_price
+        description: "Highest unit price observed for this product across all transactions."
+        tests:
+          - not_null
+      - name: avg_unit_price
+        description: "Average unit price across all transactions for this product."
+        tests:
+          - not_null
+
+  - name: dim_stores
+    description: >
+      Store dimension derived from transaction data.
+      One row per store_id with activity summary metrics.
+    columns:
+      - name: store_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+      - name: first_transaction_date
+        description: "Date of the earliest transaction recorded for this store."
+        tests:
+          - not_null
+      - name: last_transaction_date
+        description: "Date of the most recent transaction recorded for this store."
+        tests:
+          - not_null
+      - name: active_days
+        description: "Count of distinct calendar days with at least one transaction."
+        tests:
+          - not_null
+      - name: total_transactions
+        description: "All-time transaction count for this store."
+        tests:
+          - not_null
+      - name: unique_customers
+        description: "Count of distinct customers who have transacted at this store."
+        tests:
+          - not_null
